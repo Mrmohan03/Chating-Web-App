@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatFlow | Connect Instantly</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- AUTHENTICATION SCREEN -->
+    <div id="authScreen" class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="logo">💬</div>
+                <h1>ChatFlow</h1>
+                <p id="authSubtitle">Sign in to continue chatting</p>
+            </div>
+
+            <!-- Login View -->
+            <div id="loginView">
+                <div class="input-group">
+                    <label>Email Address</label>
+                    <input type="email" id="loginEmail" placeholder="name@company.com">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••">
+                </div>
+                <button class="btn-primary" onclick="doLogin()">Sign In</button>
+                <p class="toggle-text">New here? <a href="javascript:void(0)" onclick="toggleAuth(true)">Create an account</a></p>
+            </div>
+
+            <!-- Register View -->
+            <div id="registerView" class="hidden">
+                <div class="input-group">
+                    <label>Full Name</label>
+                    <input type="text" id="regName" placeholder="John Doe">
+                </div>
+                <div class="input-group">
+                    <label>Email Address</label>
+                    <input type="email" id="regEmail" placeholder="name@company.com">
+                </div>
+                <div class="input-group">
+                    <label>Password</label>
+                    <input type="password" id="regPassword" placeholder="Minimum 6 characters">
+                </div>
+                <button class="btn-primary" onclick="doRegister()">Create Account</button>
+                <p class="toggle-text">Already have an account? <a href="javascript:void(0)" onclick="toggleAuth(false)">Sign in</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP SCREEN -->
+    <div id="appShell" class="app-container hidden">
+        <aside class="sidebar">
+            <header class="sidebar-header">
+                <div id="selfAvatar" class="avatar-circle"></div>
+                <div class="header-actions">
+                    <button class="icon-btn" onclick="openAddContactModal()" title="Add Contact">➕</button>
+                    <button class="icon-btn" onclick="doLogout()" title="Logout">🚪</button>
+                </div>
+            </header>
+            
+            <div class="search-area">
+                <input type="text" id="contactSearch" placeholder="Search or start new chat" oninput="renderChatList(this.value)">
+            </div>
+
+            <ul id="chatList" class="chat-list">
+                <!-- Contacts load here -->
+            </ul>
+        </aside>
+
+        <main class="chat-area">
+            <!-- Welcome State -->
+            <div id="emptyState" class="empty-view">
+                <div class="empty-icon">💬</div>
+                <h2>ChatFlow for Web</h2>
+                <p>Select a contact to start messaging securely.</p>
+            </div>
+
+            <!-- Active Chat -->
+            <div id="chatWindow" class="chat-window hidden">
+                <header class="chat-header">
+                    <div id="chatAvatar" class="avatar-circle"></div>
+                    <div class="chat-info">
+                        <h3 id="chatName">User Name</h3>
+                        <span id="chatStatus" class="status-text">offline</span>
+                    </div>
+                </header>
+
+                <div id="messagesArea" class="messages-container">
+                    <div id="messagesWrapper"></div>
+                </div>
+
+                <footer class="input-footer">
+                    <button class="icon-btn" onclick="toggleEmoji()">😊</button>
+                    <div id="messageInput" class="text-input" contenteditable="true" data-placeholder="Type a message..."></div>
+                    <button id="sendBtn" class="send-btn" onclick="sendMessage()">➤</button>
+                    <div id="emojiPicker" class="emoji-popover hidden"></div>
+                </footer>
+            </div>
+        </main>
+    </div>
+
+    <!-- ADD CONTACT MODAL -->
+    <div id="modalOverlay" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Add Contact</h2>
+                <button onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <ul id="modalList"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
