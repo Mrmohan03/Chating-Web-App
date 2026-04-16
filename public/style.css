@@ -239,3 +239,72 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
     .app-container.chat-open .sidebar { display: none; }
     .app-container.chat-open .chat-area { display: flex; width: 100%; }
 }
+.chat-media-img {
+    max-width: 280px;
+    max-height: 280px;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: var(--t);
+}
+.chat-media-img:hover { opacity: 0.9; }
+
+.chat-media-video {
+    max-width: 280px;
+    border-radius: 6px;
+    margin-bottom: 5px;
+    background: #000;
+}
+
+/* Document / Zip Attachment UI */
+.chat-doc {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    cursor: pointer;
+    transition: var(--t);
+    border: 1px solid rgba(255,255,255,0.05);
+}
+.chat-doc:hover { background: rgba(0, 0, 0, 0.4); }
+
+.doc-icon {
+    font-size: 24px;
+    background: rgba(255,255,255,0.1);
+    width: 45px; height: 45px;
+    display: flex; justify-content: center; align-items: center;
+    border-radius: 8px;
+}
+.doc-info { display: flex; flex-direction: column; }
+.doc-name { font-weight: 600; font-size: 14px; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-size { font-size: 11px; color: rgba(255,255,255,0.6); text-transform: uppercase; margin-top: 2px; }
+
+/* Input & Upload Overlays */
+.attach-btn { transform: rotate(45deg); /* Looks more like a clip */ }
+
+.upload-overlay {
+    position: absolute; inset: 0;
+    background: var(--bg-input);
+    border-radius: 8px; z-index: 10;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent); font-weight: 600; font-size: 14px; gap: 8px;
+}
+
+/* Loading Spinner */
+.spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--accent);
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    display: inline-block;
+    animation: rotation 1s linear infinite;
+}
+@keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* Fix bubble text when media is present */
+.bubble-text { margin-top: 2px; word-wrap: break-word; }

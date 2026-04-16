@@ -95,8 +95,20 @@
                 </div>
 
                 <footer class="input-footer">
-                    <button class="icon-btn" onclick="toggleEmoji()">😊</button>
-                    <div id="messageInput" class="text-input" contenteditable="true" data-placeholder="Type a message..."></div>
+                    <!-- Hidden file input -->
+                    <input type="file" id="fileInput" class="hidden" onchange="handleFileUpload(event)">
+                    
+                    <button class="icon-btn attach-btn" onclick="document.getElementById('fileInput').click()" title="Attach File">📎</button>
+                    <button class="icon-btn" onclick="toggleEmoji()" title="Emojis">😊</button>
+                    
+                    <div class="input-wrapper" style="flex: 1; position: relative;">
+                        <!-- Uploading overlay -->
+                        <div id="uploadOverlay" class="upload-overlay hidden">
+                            <span class="spinner"></span> Uploading...
+                        </div>
+                        <div id="messageInput" class="text-input" contenteditable="true" data-placeholder="Type a message..."></div>
+                    </div>
+                    
                     <button id="sendBtn" class="send-btn" onclick="sendMessage()">➤</button>
                     <div id="emojiPicker" class="emoji-popover hidden"></div>
                 </footer>

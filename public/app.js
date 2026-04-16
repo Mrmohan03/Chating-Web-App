@@ -8,6 +8,9 @@ let activeContact = null;
 let unreadCounts  = {};
 let socket        = null;
 let allUsers      = []; 
+let activeMessages = [];
+let activeChatRefreshTimer = null;
+let pendingAttachment = null;
 const EMOJIS      = ['😀','😂','😍','🤩','😎','👍','❤️','🔥','🚀','🍕','🎉','✨','🙏','💡'];
 
 /* ─── INIT ─── */
@@ -153,15 +156,16 @@ async function openChat(contact) {
     document.getElementById('chatStatus').textContent = contact.status;
     document.getElementById('chatAvatar').innerHTML = makeAvatar(contact, 40);
     
-    const msgs = await apiCall('GET', `/api/messages/${contact.id}`);
-    renderMessages(msgs);
+    await refreshActiveMessages();
+    startActiveChatRefresh();
     renderChatList(); // refresh unread dots
 }
 
 function renderMessages(messages) {
+    activeMessages = Array.isArray(messages) ? [...messages] : [];
     const wrapper = document.getElementById('messagesWrapper');
     wrapper.innerHTML = '';
-    messages.forEach(m => wrapper.appendChild(makeBubble(m)));
+    activeMessages.forEach(m => wrapper.appendChild(makeBubble(m)));
     scrollBottom();
 }
 
@@ -169,13 +173,39 @@ function makeBubble(msg) {
     const isOut = String(msg.sender_id) === String(currentUser.id);
     const div = document.createElement('div');
     div.className = `msg-row ${isOut ? 'out' : 'in'}`;
+    div.dataset.messageKey = getMessageKey(msg);
     
     const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const tick = isOut ? `<span class="tick ${msg.is_read ? 'read' : ''}">✓✓</span>` : '';
+    const tick = isOut ? renderTick(msg) : '';
+
+    // PRO FEATURE: Dynamic Media Rendering
+    let mediaHTML = '';
+    if (msg.file_url) {
+        if (msg.file_type.startsWith('image/')) {
+            mediaHTML = `<img src="${msg.file_url}" class="chat-media-img" onclick="window.open('${msg.file_url}', '_blank')">`;
+        } else if (msg.file_type.startsWith('video/')) {
+            mediaHTML = `<video src="${msg.file_url}" class="chat-media-video" controls preload="metadata"></video>`;
+        } else {
+            // ZIPs, PDFs, Docs
+            const mbSize = (msg.file_size / (1024 * 1024)).toFixed(2);
+            mediaHTML = `
+                <div class="chat-doc" onclick="window.open('${msg.file_url}', '_blank')">
+                    <div class="doc-icon">📄</div>
+                    <div class="doc-info">
+                        <span class="doc-name">${msg.file_name}</span>
+                        <span class="doc-size">${mbSize} MB • ${msg.file_type.split('/')[1] || 'File'}</span>
+                    </div>
+                </div>`;
+        }
+    }
+
+    // Only render text div if there is actually text
+    const textHTML = msg.text ? `<div class="bubble-text">${msg.text}</div>` : '';
 
     div.innerHTML = `
         <div class="bubble">
-            <div class="bubble-text">${msg.text}</div>
+            ${mediaHTML}
+            ${textHTML}
             <div class="bubble-meta">${time} ${tick}</div>
         </div>`;
     return div;
@@ -184,15 +214,70 @@ function makeBubble(msg) {
 function sendMessage() {
     const input = document.getElementById('messageInput');
     const text = input.textContent.trim();
-    if (!text || !activeContact) return;
+    
+    // Allow sending if there's text OR a pending attachment
+    if ((!text && !pendingAttachment) || !activeContact) return;
 
-    const msg = { sender_id: currentUser.id, receiver_id: activeContact.id, text };
+    const client_id = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const msg = {
+        client_id,
+        sender_id: currentUser.id,
+        receiver_id: activeContact.id,
+        text: text,
+        created_at: new Date().toISOString(),
+        is_read: false,
+        delivery_status: activeContact.status === 'online' ? 'delivered' : 'sent',
+        
+        // This handles your 'type' column from the database
+        type: pendingAttachment ? 'media' : 'text', 
+        
+        // These are the new file columns
+        file_url: pendingAttachment?.url || null,
+        file_name: pendingAttachment?.name || null,
+        file_type: pendingAttachment?.type || null,
+        file_size: pendingAttachment?.size || null
+    };
+
+    upsertMessage(msg);
     socket.emit('message:send', msg);
     
+    // Clear inputs
     input.textContent = '';
-    // Optimistic UI: add bubble immediately
-    document.getElementById('messagesWrapper').appendChild(makeBubble({...msg, created_at: new Date()}));
-    scrollBottom();
+    pendingAttachment = null; 
+    renderMessages(activeMessages);
+}
+
+// Handle File Selection & Upload
+async function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const overlay = document.getElementById('uploadOverlay');
+    overlay.classList.remove('hidden'); // Show loading spinner
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            body: formData
+        });
+        
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        // Save to pending attachment and auto-trigger send
+        pendingAttachment = data;
+        sendMessage(); 
+
+    } catch (err) {
+        alert("Upload failed: " + err.message);
+    } finally {
+        overlay.classList.add('hidden'); // Hide spinner
+        event.target.value = ''; // Reset file input
+    }
 }
 
 /* ─── HELPERS ─── */
@@ -215,26 +300,103 @@ function scrollBottom() {
     area.scrollTop = area.scrollHeight;
 }
 
+function getMessageKey(msg) {
+    return String(msg.id || msg.client_id || `${msg.sender_id}-${msg.receiver_id}-${msg.created_at}-${msg.text}`);
+}
+
+function getMessageStatus(msg) {
+    if (msg.is_read) return 'read';
+    if (msg.delivery_status) return msg.delivery_status;
+
+    const receiverId = String(msg.receiver_id);
+    const contact = contacts.find(c => String(c.id) === receiverId) || activeContact;
+    return contact?.status === 'online' ? 'delivered' : 'sent';
+}
+
+function renderTick(msg) {
+    const status = getMessageStatus(msg);
+    if (status === 'read') return `<span class="tick read">✓✓</span>`;
+    if (status === 'delivered') return `<span class="tick">✓✓</span>`;
+    return `<span class="tick">✓</span>`;
+}
+
+function upsertMessage(message) {
+    const nextKey = getMessageKey(message);
+    const existingIndex = activeMessages.findIndex((item) =>
+        String(item.id || '') === String(message.id || '') ||
+        String(item.client_id || '') === String(message.client_id || '') ||
+        getMessageKey(item) === nextKey
+    );
+
+    if (existingIndex >= 0) {
+        activeMessages[existingIndex] = { ...activeMessages[existingIndex], ...message };
+    } else {
+        activeMessages.push(message);
+    }
+
+    activeMessages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+}
+
+function mergeMessages(serverMessages) {
+    const pendingMessages = activeMessages.filter((message) => !message.id && message.client_id);
+    const nextMessages = [...(serverMessages || [])];
+
+    pendingMessages.forEach((message) => {
+        const alreadySaved = nextMessages.some((item) => item.client_id && item.client_id === message.client_id);
+        if (!alreadySaved) nextMessages.push(message);
+    });
+
+    return nextMessages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+}
+
+async function refreshActiveMessages() {
+    if (!activeContact) return;
+
+    const msgs = await apiCall('GET', `/api/messages/${activeContact.id}`);
+    if (msgs?.error || !Array.isArray(msgs)) return;
+
+    renderMessages(mergeMessages(msgs));
+}
+
+function startActiveChatRefresh() {
+    if (activeChatRefreshTimer) clearInterval(activeChatRefreshTimer);
+    activeChatRefreshTimer = setInterval(() => {
+        refreshActiveMessages();
+    }, 2000);
+}
+
 function connectSocket() {
     socket = io();
     socket.emit('user:join', currentUser.id);
 
+    socket.on('message:sent', (msg) => {
+        if (!activeContact || String(activeContact.id) !== String(msg.receiver_id)) return;
+        upsertMessage(msg);
+        renderMessages(activeMessages);
+    });
+
     socket.on('message:receive', (msg) => {
+        console.log("📥 RECEIVED MESSAGE FROM SERVER:", msg); // <-- ADD THIS LINE
+        
         if (activeContact && String(activeContact.id) === String(msg.sender_id)) {
-            document.getElementById('messagesWrapper').appendChild(makeBubble(msg));
-            scrollBottom();
+            upsertMessage(msg);
+            renderMessages(activeMessages);
+            refreshActiveMessages();
         } else {
             unreadCounts[msg.sender_id] = (unreadCounts[msg.sender_id] || 0) + 1;
             renderChatList();
         }
     });
-
+    
     socket.on('user:status', ({ userId, status }) => {
         const contact = contacts.find(c => String(c.id) === String(userId));
         if(contact) {
             contact.status = status;
             renderChatList();
-            if(activeContact?.id === userId) document.getElementById('chatStatus').textContent = status;
+            if(activeContact?.id === userId) {
+                document.getElementById('chatStatus').textContent = status;
+                renderMessages(activeMessages);
+            }
         }
     });
 }
@@ -288,10 +450,12 @@ async function loadUnread() {
     renderChatList();
 }
 
-// Global listeners for Enter key
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && document.activeElement.id === 'messageInput') {
-        e.preventDefault();
-        sendMessage();
+    if (document.activeElement.id === 'messageInput') {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault(); // Prevent newline
+            sendMessage();
+        }
+        // If Shift+Enter, let it naturally create a new line
     }
 });
