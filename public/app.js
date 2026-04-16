@@ -247,13 +247,19 @@ function sendMessage() {
     renderMessages(activeMessages);
 }
 
-// Handle File Selection & Upload
+/* ─── DRAG & DROP AND FILE UPLOAD ─── */
+
+// 1. Handle the standard attachment button click
 async function handleFileUpload(event) {
     const file = event.target.files[0];
-    if (!file) return;
+    if (file) await uploadFileDirectly(file);
+    event.target.value = ''; // Reset input
+}
 
+// 2. The core upload function used by both button and drag-and-drop
+async function uploadFileDirectly(file) {
     const overlay = document.getElementById('uploadOverlay');
-    overlay.classList.remove('hidden'); // Show loading spinner
+    overlay.classList.remove('hidden'); // Show spinner
 
     const formData = new FormData();
     formData.append('file', file);
@@ -276,9 +282,44 @@ async function handleFileUpload(event) {
         alert("Upload failed: " + err.message);
     } finally {
         overlay.classList.add('hidden'); // Hide spinner
-        event.target.value = ''; // Reset file input
     }
 }
+
+// 3. Setup Drag & Drop Listeners
+const chatWindowEl = document.getElementById('chatWindow');
+const dragOverlayEl = document.getElementById('dragOverlay');
+
+chatWindowEl.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    if (activeContact) {
+        dragOverlayEl.classList.remove('hidden');
+        dragOverlayEl.classList.add('active');
+    }
+});
+
+chatWindowEl.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    dragOverlayEl.classList.remove('active');
+    // Slight delay to prevent flickering when moving mouse over children
+    setTimeout(() => {
+        if (!dragOverlayEl.classList.contains('active')) {
+            dragOverlayEl.classList.add('hidden');
+        }
+    }, 150);
+});
+
+chatWindowEl.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragOverlayEl.classList.remove('active');
+    dragOverlayEl.classList.add('hidden');
+    
+    if (!activeContact) return;
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0];
+        uploadFileDirectly(file);
+    }
+});
 
 /* ─── HELPERS ─── */
 function makeAvatar(user, size) {
@@ -359,10 +400,9 @@ async function refreshActiveMessages() {
 }
 
 function startActiveChatRefresh() {
-    if (activeChatRefreshTimer) clearInterval(activeChatRefreshTimer);
-    activeChatRefreshTimer = setInterval(() => {
-        refreshActiveMessages();
-    }, 2000);
+    // PRO FIX: We use Socket.io for instant updates now.
+    // We do NOT need to refresh the screen every 2 seconds.
+   if (activeChatRefreshTimer) clearInterval(activeChatRefreshTimer);
 }
 
 function connectSocket() {
