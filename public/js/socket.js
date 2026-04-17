@@ -13,12 +13,16 @@ export function connectSocket() {
     });
 
     state.socket.on('message:receive', (msg) => {
-        if (state.activeContact && String(state.activeContact.id) === String(msg.sender_id)) {
+        // Did this come from a group or a direct message?
+        const isGroupMsg = msg.group_id !== null;
+        const targetChatId = isGroupMsg ? msg.group_id : msg.sender_id;
+
+        if (state.activeContact && String(state.activeContact.id) === String(targetChatId)) {
             upsertMessage(msg);
             renderMessages(state.activeMessages);
             refreshActiveMessages();
         } else {
-            state.unreadCounts[msg.sender_id] = (state.unreadCounts[msg.sender_id] || 0) + 1;
+            state.unreadCounts[targetChatId] = (state.unreadCounts[targetChatId] || 0) + 1;
             renderChatList();
         }
     });

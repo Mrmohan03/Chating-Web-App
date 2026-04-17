@@ -2,6 +2,7 @@ export const state = {
     token: localStorage.getItem('cf_token'),
     currentUser: null,
     contacts: [],
+    groups: [], 
     activeContact: null,
     unreadCounts: {},
     socket: null,

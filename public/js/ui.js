@@ -1,10 +1,27 @@
 import { state } from './state.js';
 
 export function makeAvatar(user, size) {
-    const letter = user.name[0].toUpperCase();
-    return `<div class="avatar-circle" style="width:${size}px;height:${size}px;background:${user.avatar_color};flex-shrink:0">
+    const name = user.name || 'Group';
+    const letter = name[0].toUpperCase();
+    const color = user.avatar_color || '#005c4b'; // Default WhatsApp Green for groups
+    
+    // Don't show online dots for groups
+    const statusDot = user.isGroup ? '' : `<span class="status-dot ${user.status === 'online' ? 'dot-online' : 'dot-offline'}"></span>`;
+
+    // If they uploaded a custom image, show it!
+    if (user.avatar_url) {
+        return `
+        <div class="avatar-circle" style="width:${size}px;height:${size}px;flex-shrink:0;position:relative;">
+            <img src="${user.avatar_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+            ${statusDot}
+        </div>`;
+    }
+
+    // Otherwise, show the letter
+    return `
+    <div class="avatar-circle" style="width:${size}px;height:${size}px;background:${color};flex-shrink:0;position:relative;">
         ${letter}
-        <span class="status-dot ${user.status === 'online' ? 'dot-online' : 'dot-offline'}"></span>
+        ${statusDot}
     </div>`;
 }
 

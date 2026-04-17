@@ -21,4 +21,12 @@ router.get('/messages/:userId', authMiddleware, chatCtrl.getMessages);
 router.get('/unread', authMiddleware, chatCtrl.getUnread);
 router.post('/upload', authMiddleware, upload.single('file'), chatCtrl.uploadFile);
 
+
+// Profile Routes
+router.put('/profile', authMiddleware, chatCtrl.updateProfile);
+
+// Group Routes
+router.post('/groups', authMiddleware, chatCtrl.createGroup);
+router.get('/groups', authMiddleware, chatCtrl.getGroups);
+
 module.exports = router;

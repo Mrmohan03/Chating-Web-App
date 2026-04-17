@@ -18,12 +18,33 @@ exports.addContact = async (req, res) => {
 
 exports.getMessages = async (req, res) => {
   const otherId = req.params.userId;
-  const { data } = await supabase.from('messages').select('*')
-    .or(`and(sender_id.eq.${req.user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${req.user.id})`)
-    .order('created_at', { ascending: true });
-  
-  await supabase.from('messages').update({ is_read: true }).match({ sender_id: otherId, receiver_id: req.user.id, is_read: false });
-  res.json(data || []);
+  const isGroup = req.query.isGroup === 'true';
+
+  try {
+    let query;
+    if (isGroup) {
+      // PRO FIX: Join the users table to get the sender's name & color!
+      query = supabase.from('messages')
+        .select(`*,sender:users!messages_sender_id_fkey(name, avatar_color)`) 
+        .eq('group_id', otherId)
+        .order('created_at', { ascending: true });
+    } else {
+      query = supabase.from('messages')
+        .select(`*`)
+        .or(`and(sender_id.eq.${req.user.id},receiver_id.eq.${otherId}),and(sender_id.eq.${otherId},receiver_id.eq.${req.user.id})`)
+        .order('created_at', { ascending: true });
+      
+      await supabase.from('messages').update({ is_read: true }).match({ sender_id: otherId, receiver_id: req.user.id, is_read: false });
+    }
+    
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json(data || []);
+
+  } catch (error) {
+    console.error("❌ GET MESSAGES ERROR:", error.message);
+    res.status(400).json({ error: error.message });
+  }
 };
 
 exports.getUnread = async (req, res) => {
@@ -60,5 +81,63 @@ exports.uploadFile = async (req, res) => {
   } catch (error) {
     console.error("❌ SERVER UPLOAD CRASH:", error);
     res.status(500).json({ error: 'Internal server error during upload.' });
+  }
+};
+// --- NEW: Profile Update ---
+exports.updateProfile = async (req, res) => {
+  const { name, bio, avatar_url } = req.body;
+  const { data, error } = await supabase.from('users')
+    .update({ name, bio, avatar_url })
+    .eq('id', req.user.id)
+    .select('id, name, email, bio, avatar_color, avatar_url, status').single();
+    
+  if (error) return res.status(400).json({ error: error.message });
+  res.json(data);
+};
+
+// --- NEW: Group Creation ---
+exports.createGroup = async (req, res) => {
+  const { name, memberIds } = req.body;
+  
+  try {
+    // 1. Create the Group
+    const { data: group, error: groupErr } = await supabase.from('groups')
+      .insert([{ name, created_by: req.user.id }]).select().single();
+    if (groupErr) throw groupErr;
+
+    // 2. Add members (including the creator)
+    const allMembers = [...new Set([...memberIds, req.user.id])].map(id => ({
+      group_id: group.id, user_id: id
+    }));
+    
+    const { error: membersErr } = await supabase.from('group_members').insert(allMembers);
+    if (membersErr) throw membersErr;
+
+    res.json({ ...group, isGroup: true });
+  } catch (error) {
+    console.error("❌ CREATE GROUP ERROR:", error.message);
+    res.status(400).json({ error: error.message });
+  }
+};
+
+// --- NEW: Fetch Groups ---
+exports.getGroups = async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('group_members')
+      .select('groups (id, name, avatar_url)')
+      .eq('user_id', req.user.id);
+      
+    if (error) throw error;
+
+    // Safely format the data so the frontend doesn't crash
+    const formattedGroups = data
+      .map(d => d.groups)       // Extract group object
+      .filter(g => g !== null)  // Remove nulls if a group was deleted
+      .map(g => ({ ...g, isGroup: true })); // Add the isGroup flag
+      
+    res.json(formattedGroups);
+  } catch (error) {
+    console.error("❌ FETCH GROUPS ERROR:", error.message);
+    res.status(400).json({ error: error.message });
   }
 };

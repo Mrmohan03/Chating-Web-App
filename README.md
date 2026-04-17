@@ -1,218 +1,144 @@
-# ChatFlow — Local Setup Guide
+# ChatFlow — Pro WhatsApp Web Clone
 
-Complete step-by-step guide to run this app locally on your computer.
-
----
-
-## What You Need First
-
-| Tool       | Download Link                             | Check if installed     |
-|------------|-------------------------------------------|------------------------|
-| Node.js    | https://nodejs.org  (download LTS version)| `node -v` in terminal  |
-| npm        | Comes with Node.js automatically          | `npm -v` in terminal   |
-
-> **Tip:** If `node -v` shows a version number, Node.js is already installed.
+A highly professional, modular, real-time chat application inspired by WhatsApp Web. Built with Vanilla JS (ES6 Modules), Node.js, Express, Socket.io, and Supabase.
 
 ---
 
-## Step 1 — Set Up the Project Folder
+## ✨ Features
 
-Open your **Terminal** (Mac/Linux) or **Command Prompt / PowerShell** (Windows) and run:
-
-```bash
-# Create a folder for the project
-mkdir chatflow
-cd chatflow
-```
-
-Now copy these files into the `chatflow` folder:
-```
-chatflow/
-├── server.js
-├── package.json
-└── public/
-    ├── index.html
-    ├── style.css
-    └── app.js
-```
+- **Professional UI/UX:** WhatsApp-style dark mode, SVG icons, floating input labels, and glassmorphism modals.
+- **Real-Time Messaging:** Instant message delivery, online/offline status indicators, and read receipts (✓✓) using Socket.io.
+- **Media Uploads:** Send Images, Videos, PDFs, and ZIPs.
+- **Drag & Drop:** Drag files directly from your computer onto the chat window to upload.
+- **Modular Architecture:** Cleanly separated backend (MVC pattern) and frontend (ES6 Modules).
+- **Secure:** JWT Authentication, Bcrypt password hashing, and Supabase Row Level Security (RLS).
 
 ---
 
-## Step 2 — Install Dependencies
+## 🛠 Technology Stack
 
-Inside the `chatflow` folder, run:
+- **Frontend:** HTML5, CSS3, Vanilla JavaScript (ES6 Modules)
+- **Backend:** Node.js, Express.js
+- **Database & Storage:** Supabase (PostgreSQL)
+- **Real-Time:** Socket.io
+- **File Uploads:** Multer (Memory Storage) -> Supabase Storage Bucket
 
-```bash
+---
+
+## 🚀 Local Setup Guide
+
+### 1. Prerequisites
+- **Node.js**: [Download here](https://nodejs.org/) (LTS version recommended).
+- **Supabase Account**: [Create a free account](https://supabase.com/).
+
+### 2. Database Setup (Supabase)
+1. Create a new project in Supabase.
+2. Go to the **SQL Editor** and run this query to create your tables:
+
+```sql
+CREATE TABLE users (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    avatar_color TEXT,
+    status TEXT DEFAULT 'offline'
+);
+
+CREATE TABLE contacts (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    user_id UUID REFERENCES users(id),
+    contact_id UUID REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE messages (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    sender_id UUID REFERENCES users(id),
+    receiver_id UUID REFERENCES users(id),
+    text TEXT,
+    type TEXT DEFAULT 'text',
+    is_read BOOLEAN DEFAULT FALSE,
+    file_url TEXT,
+    file_name TEXT,
+    file_type TEXT,
+    file_size INTEGER,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Secure your database
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+2. Go to Storage and create a public bucket named chat_media.
+
+3. Project Configuration
+Clone or download this repository, then create a file named exactly .env in the root folder:
+code
+Env
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_KEY=your_secret_service_role_key_here
+JWT_SECRET=super_secret_chatflow_key_2024
+PORT=3000
+
+(Note: Use your service_role secret key from Supabase > Project Settings > API).
+4. Install Dependencies
+Open your terminal in the project folder and run:
 npm install
-```
+You should see: 🚀 ChatFlow online at http://localhost:3000
+Open http://localhost:3000 in your browser. Open a second window to register two different accounts and test the real-time chat!
 
-This downloads all required packages:
-- **express** — web server
-- **sqlite3** — local database (no installation needed, it's a file!)
-- **bcryptjs** — password hashing
-- **jsonwebtoken** — login sessions
-- **socket.io** — real-time messaging
-- **cors** — cross-origin support
-
-You'll see a `node_modules/` folder appear. That's normal.
-
----
-
-## Step 3 — Start the Server
-
-```bash
-node server.js
-```
-
-You should see:
-```
-Connected to SQLite database (chatflow.db)
-ChatFlow running at http://localhost:3000
-```
-
-A file called `chatflow.db` is automatically created in your project folder.
-**This is your database** — all users and messages are stored here.
-
----
-
-## Step 4 — Open the App
-
-Open your browser and go to:
-
-```
-http://localhost:3000
-```
-
-You'll see the ChatFlow login screen.
-
----
-
-## Step 5 — Create Accounts and Test
-
-Since this is fresh, there are no users yet. You need to register.
-
-**To test messaging between two users:**
-
-1. Open `http://localhost:3000` in **Browser Tab 1** → Register as User A
-2. Open `http://localhost:3000` in **Browser Tab 2** (or another browser) → Register as User B
-3. In Tab 1: click the **+** button → search for User B → click Add
-4. Click on User B in the sidebar → type a message → press Enter
-5. In Tab 2: you'll see the message arrive in real-time!
-
----
-
-## Database File Location
-
-The SQLite database is a single file:
-```
-chatflow/chatflow.db
-```
-
-You can open it with a free tool to inspect your data:
-- **DB Browser for SQLite**: https://sqlitebrowser.org (free, recommended)
-
-Tables inside `chatflow.db`:
-- `users` — stores all registered accounts
-- `messages` — stores all chat messages
-- `contacts` — stores who is connected to who
-
----
-
-## Stop the Server
-
-Press `Ctrl + C` in the terminal.
-
----
-
-## Restart the Server Later
-
-```bash
-cd chatflow
-node server.js
-```
-
-Your data is still there — `chatflow.db` persists between restarts.
-
----
-
-## Common Errors and Fixes
-
-### Error: `Cannot find module 'express'`
-**Fix:** You forgot to run `npm install`. Run it now.
-
-### Error: `EADDRINUSE: address already in use :::3000`
-**Fix:** Port 3000 is busy. Either:
-- Stop whatever is using port 3000, OR
-- Change the port in `server.js`: find `const PORT = 3000` and change to `3001`, then open `http://localhost:3001`
-
-### Error: `node is not recognized` (Windows)
-**Fix:** Node.js is not installed or not in your PATH. Download it from https://nodejs.org and reinstall.
-
-### Login says "Network error. Is the server running?"
-**Fix:** The server is not running. Go to your terminal and run `node server.js`.
-
-### Page shows nothing / blank screen
-**Fix:** Make sure `index.html`, `style.css`, and `app.js` are inside the `public/` subfolder, not directly in `chatflow/`.
-
-### Messages not sending in real-time
-**Fix:** Make sure both browser tabs are open to `http://localhost:3000` (not just opening the HTML file directly).
-
----
-
-## Bugs Fixed in This Version
-
-| Bug | What was wrong | Fixed |
-|-----|---------------|-------|
-| Login not working | `avatar_color` field mismatch between login API and frontend | ✅ |
-| Register button did nothing | `onclick` in HTML called functions before they were defined | ✅ |
-| DOM errors on load | `$()` ran before DOM was ready | ✅ |
-| Typing indicator broken | `sender_id` not passed in typing events | ✅ |
-| Add contact modal empty | `allUsers` not cached for search filter | ✅ |
-| Auth link clicks | Used `onclick=""` in HTML which failed; now uses `addEventListener` | ✅ |
-
----
-
-## Project File Overview
-
-```
+📂 Professional Folder Structure
+The application follows a strict modular separation of concerns.
+code
+Text
 chatflow/
+├── .env                    # Secret API keys
+├── package.json            # npm dependencies
+├── server.js               # Entry point: Starts Express & WebSockets
 │
-├── server.js          ← Backend: Express server + SQLite + Socket.IO
-├── package.json       ← Lists all npm packages needed
-├── chatflow.db        ← SQLite database (auto-created on first run)
+├── src/                    # ⚙️ BACKEND
+│   ├── config/             
+│   │   └── supabase.js     # DB Connection
+│   ├── controllers/        
+│   │   ├── authController.js # Login/Register logic
+│   │   └── chatController.js # Messages, Contacts, Uploads
+│   ├── middleware/         
+│   │   ├── auth.js         # JWT validation
+│   │   └── upload.js       # Multer memory storage config
+│   ├── routes/             
+│   │   └── api.js          # Express Router endpoints
+│   └── socket/             
+│       └── index.js        # Socket.io event listeners
 │
-└── public/            ← Frontend (served as static files)
-    ├── index.html     ← Full UI (auth screen + chat app)
-    ├── style.css      ← All styling
-    └── app.js         ← Frontend logic (login, send, receive, contacts)
-```
-
----
-
-## API Endpoints Reference
-
-| Method | URL                      | Auth? | What it does                      |
-|--------|--------------------------|-------|-----------------------------------|
-| POST   | /api/register            | No    | Create a new account              |
-| POST   | /api/login               | No    | Login, returns JWT token          |
-| GET    | /api/profile             | Yes   | Get your profile                  |
-| PUT    | /api/profile             | Yes   | Update your name or bio           |
-| GET    | /api/users               | Yes   | List all other users              |
-| GET    | /api/contacts            | Yes   | Your contacts list                |
-| POST   | /api/contacts            | Yes   | Add a contact by ID               |
-| GET    | /api/messages/:userId    | Yes   | Load conversation with a user     |
-| GET    | /api/unread              | Yes   | Get unread counts per sender      |
-
----
-
-## Socket Events Reference
-
-| Event            | Who sends it   | What it does                      |
-|------------------|----------------|-----------------------------------|
-| `user:join`      | Client         | Marks you as online               |
-| `message:send`   | Client         | Sends a message (saved to DB)     |
-| `message:sent`   | Server         | Confirms message was saved        |
-| `message:receive`| Server         | Delivers message to recipient     |
-| `typing:start`   | Client         | Tells other user you're typing    |
-| `typing:stop`    | Client         | Tells other user you stopped      |
-| `user:status`    | Server (all)   | Broadcasts online/offline status  |
+└── public/                 # 🌐 FRONTEND
+    ├── index.html          # Main UI
+    ├── css/                
+    │   └── style.css       # Pro WhatsApp-style CSS
+    └── js/                 # ES6 Modules
+        ├── api.js          # Fetch requests
+        ├── auth.js         # Authentication state
+        ├── chat.js         # Message rendering & Drag-and-Drop
+        ├── contacts.js     # Sidebar & Modal logic
+        ├── main.js         # Bootstrapper
+        ├── socket.js       # Client WebSocket logic
+        ├── state.js        # Global app state
+        └── ui.js           # DOM visual helpers
+📡 API Endpoints Reference
+Method	URL	Auth?	Description
+POST	/api/register	No	Create a new account
+POST	/api/login	No	Login, returns JWT token
+GET	/api/users	Yes	List all registered users
+GET	/api/contacts	Yes	Get logged-in user's contacts
+POST	/api/contacts	Yes	Add a new contact
+GET	/api/messages/:userId	Yes	Fetch chat history with a user
+GET	/api/unread	Yes	Get unread message counts
+POST	/api/upload	Yes	Upload media to Supabase Storage
+⚡ Socket.IO Events
+Event	Direction	Description
+user:join	Client -> Server	Marks the user as online upon login
+message:send	Client -> Server	Delivers a message (text/media) to DB
+message:sent	Server -> Client	Confirms to sender that DB saved message
+message:receive	Server -> Client	Delivers message to target receiver
+user:status	Server -> All	Broadcasts online/offline status changes
