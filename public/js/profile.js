@@ -9,27 +9,65 @@ export function openProfileModal() {
     document.getElementById('editName').value = state.currentUser.name;
     document.getElementById('editBio').value = state.currentUser.bio || '';
     
+    const DEFAULT_AVATAR = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png';
+    const imgUrl = state.currentUser.avatar_url || DEFAULT_AVATAR;
+    
     const preview = document.getElementById('profileAvatarPreview');
-    if (state.currentUser.avatar_url) {
-        preview.innerHTML = `<img src="${state.currentUser.avatar_url}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
-    } else {
-        preview.innerHTML = state.currentUser.name[0].toUpperCase();
-        preview.style.background = state.currentUser.avatar_color;
-    }
+    preview.innerHTML = `<img src="${imgUrl}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
 }
 
-export function closeProfileModal() { document.getElementById('profileModal').classList.add('hidden'); }
+export function closeProfileModal() { 
+    document.getElementById('profileModal').classList.add('hidden'); 
+}
 
 export async function saveProfile() {
     const name = document.getElementById('editName').value;
     const bio = document.getElementById('editBio').value;
     
+    // Save to Database
     const updatedUser = await apiCall('PUT', '/api/profile', { name, bio, avatar_url: state.currentUser.avatar_url });
+    
     if (updatedUser && !updatedUser.error) {
         state.currentUser = updatedUser;
         localStorage.setItem('cf_user', JSON.stringify(updatedUser));
         renderSelfAvatar();
         closeProfileModal();
+        
+        // PRO FIX: Broadcast our new profile to all other active users instantly!
+        if (state.socket) {
+            state.socket.emit('profile:update', updatedUser);
+        }
+    } else {
+        alert("Failed to save profile: " + (updatedUser?.error || "Unknown error"));
+    }
+}
+
+export async function uploadAvatar(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const preview = document.getElementById('profileAvatarPreview');
+    preview.innerHTML = `<span class="spinner"></span>`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch('/api/upload', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${state.token}` },
+            body: formData
+        });
+        
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+
+        state.currentUser.avatar_url = data.url;
+        preview.innerHTML = `<img src="${data.url}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+        
+    } catch (err) {
+        alert("Avatar upload failed: " + err.message);
+        preview.innerHTML = state.currentUser.name[0].toUpperCase(); 
     }
 }
 
@@ -50,7 +88,9 @@ export function openGroupModal() {
     });
 }
 
-export function closeGroupModal() { document.getElementById('groupModal').classList.add('hidden'); }
+export function closeGroupModal() { 
+    document.getElementById('groupModal').classList.add('hidden'); 
+}
 
 export async function submitCreateGroup() {
     const name = document.getElementById('groupNameInput').value;
@@ -61,36 +101,5 @@ export async function submitCreateGroup() {
 
     await apiCall('POST', '/api/groups', { name, memberIds });
     closeGroupModal();
-    loadContacts(); // Refresh sidebar to show new group
-}
-export async function uploadAvatar(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    // Show a quick loading state
-    const preview = document.getElementById('profileAvatarPreview');
-    preview.innerHTML = `<span class="spinner"></span>`;
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-        // We can reuse the same /api/upload route we made for chat media!
-        const res = await fetch('/api/upload', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${state.token}` },
-            body: formData
-        });
-        
-        const data = await res.json();
-        if (data.error) throw new Error(data.error);
-
-        // Update the state and UI with the new image URL
-        state.currentUser.avatar_url = data.url;
-        preview.innerHTML = `<img src="${data.url}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
-        
-    } catch (err) {
-        alert("Avatar upload failed: " + err.message);
-        preview.innerHTML = state.currentUser.name[0].toUpperCase(); // revert on fail
-    }
+    loadContacts(); 
 }

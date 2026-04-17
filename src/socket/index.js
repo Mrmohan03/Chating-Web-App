@@ -15,6 +15,9 @@ module.exports = (io) => {
       const { data: groups } = await supabase.from('group_members').select('group_id').eq('user_id', userId);
       groups?.forEach(g => socket.join(g.group_id)); // Subscribes to group channel
     });
+    socket.on('profile:update', (userData) => {
+        socket.broadcast.emit('user:updated', userData);
+    });
 
     socket.on('message:send', async (data) => {
       const dbPayload = {

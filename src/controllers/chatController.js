@@ -1,12 +1,18 @@
 const supabase = require('../config/supabase');
 
 exports.getUsers = async (req, res) => {
-  const { data } = await supabase.from('users').select('id, name, email, bio, avatar_color, status').neq('id', req.user.id);
+  // Added 'avatar_url' to the select query!
+  const { data } = await supabase.from('users')
+    .select('id, name, email, bio, avatar_color, avatar_url, status')
+    .neq('id', req.user.id);
   res.json(data || []);
 };
 
 exports.getContacts = async (req, res) => {
-  const { data } = await supabase.from('contacts').select('users:contact_id(id, name, email, bio, avatar_color, status)').eq('user_id', req.user.id);
+  // Added 'avatar_url' to the select query!
+  const { data } = await supabase.from('contacts')
+    .select('users:contact_id(id, name, email, bio, avatar_color, avatar_url, status)')
+    .eq('user_id', req.user.id);
   res.json((data || []).map(d => d.users));
 };
 

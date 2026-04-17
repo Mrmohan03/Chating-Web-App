@@ -18,7 +18,7 @@ export async function openChat(contact) {
 }
 
 export function renderMessages(messages) {
-    state.activeMessages = Array.isArray(messages) ? [...messages] : [];
+    state.activeMessages = Array.isArray(messages) ? [...messages] :[];
     const wrapper = document.getElementById('messagesWrapper');
     wrapper.innerHTML = '';
     state.activeMessages.forEach(m => wrapper.appendChild(makeBubble(m)));
@@ -32,15 +32,13 @@ function makeBubble(msg) {
     const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const tick = isOut ? `<span class="tick ${msg.is_read ? 'read' : ''}">✓✓</span>` : '';
 
-    // PRO FEATURE: Sender Name in Groups
     let senderNameHTML = '';
     if (state.activeContact.isGroup && !isOut) {
-        // Fallback checks just in case data is missing
         const senderName = (msg.sender && msg.sender.name) ? msg.sender.name : 'User';
         const senderColor = (msg.sender && msg.sender.avatar_color) ? msg.sender.avatar_color : '#00a884';
-        
         senderNameHTML = `<div style="font-size: 13px; font-weight: 600; color: ${senderColor}; margin-bottom: 4px;">${senderName}</div>`;
     }
+
     let mediaHTML = '';
     if (msg.file_url) {
         if (msg.file_type.startsWith('image/')) {
@@ -71,13 +69,13 @@ export function sendMessage() {
     if ((!text && !state.pendingAttachment) || !state.activeContact) return;
 
     const client_id = `local-${Date.now()}`;
-    const isGroup = state.activeContact.isGroup; // Check if it's a group
+    const isGroup = state.activeContact.isGroup;
 
     const msg = {
         client_id,
         sender_id: state.currentUser.id,
-        receiver_id: isGroup ? null : state.activeContact.id, // Null if group
-        group_id: isGroup ? state.activeContact.id : null,    // Set group ID
+        receiver_id: isGroup ? null : state.activeContact.id, 
+        group_id: isGroup ? state.activeContact.id : null,    
         text: text,
         created_at: new Date().toISOString(),
         is_read: false,
@@ -110,11 +108,8 @@ export function upsertMessage(message) {
 
 export async function refreshActiveMessages() {
     if (!state.activeContact) return;
-    
-    // Add ?isGroup=true to the URL if it's a group
     const isGroupParam = state.activeContact.isGroup ? '?isGroup=true' : '';
     const msgs = await apiCall('GET', `/api/messages/${state.activeContact.id}${isGroupParam}`);
-    
     if (msgs?.error || !Array.isArray(msgs)) return;
     renderMessages(msgs);
 }

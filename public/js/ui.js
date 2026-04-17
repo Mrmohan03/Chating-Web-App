@@ -1,43 +1,41 @@
 import { state } from './state.js';
 
+const DEFAULT_AVATAR = 'https://upload.wikimedia.org/wikipedia/commons/7/7c/Profile_avatar_placeholder_large.png';
+
 export function makeAvatar(user, size) {
-    const name = user.name || 'Group';
-    const letter = name[0].toUpperCase();
-    const color = user.avatar_color || '#005c4b'; // Default WhatsApp Green for groups
+    // Use the user's uploaded image, OR the default image
+    const imgUrl = user.avatar_url || DEFAULT_AVATAR;
     
     // Don't show online dots for groups
     const statusDot = user.isGroup ? '' : `<span class="status-dot ${user.status === 'online' ? 'dot-online' : 'dot-offline'}"></span>`;
 
-    // If they uploaded a custom image, show it!
-    if (user.avatar_url) {
-        return `
-        <div class="avatar-circle" style="width:${size}px;height:${size}px;flex-shrink:0;position:relative;">
-            <img src="${user.avatar_url}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
-            ${statusDot}
-        </div>`;
-    }
-
-    // Otherwise, show the letter
     return `
-    <div class="avatar-circle" style="width:${size}px;height:${size}px;background:${color};flex-shrink:0;position:relative;">
-        ${letter}
+    <div class="avatar-circle" style="width:${size}px;height:${size}px;flex-shrink:0;position:relative;background:none;">
+        <img src="${imgUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
         ${statusDot}
     </div>`;
 }
 
 export function renderSelfAvatar() {
     const el = document.getElementById('selfAvatar');
-    el.style.background = state.currentUser.avatar_color;
-    el.textContent = state.currentUser.name[0].toUpperCase();
+    if (!el) return; // Safety check
+    
+    const imgUrl = state.currentUser.avatar_url || DEFAULT_AVATAR;
+    el.innerHTML = `<img src="${imgUrl}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+    el.style.background = 'none';
 }
 
 export function scrollBottom() {
     const area = document.getElementById('messagesArea');
-    area.scrollTop = area.scrollHeight;
+    if (area) { // SAFETY CHECK: Only scroll if the chat area is actually on screen!
+        area.scrollTop = area.scrollHeight;
+    }
 }
 
 export function buildEmojiPicker() {
     const p = document.getElementById('emojiPicker');
+    if (!p) return; // SAFETY CHECK: Prevent crash if picker isn't found
+    
     state.EMOJIS.forEach(e => {
         const b = document.createElement('button');
         b.textContent = e;
@@ -50,5 +48,8 @@ export function buildEmojiPicker() {
 }
 
 export function toggleEmoji() {
-    document.getElementById('emojiPicker').classList.toggle('hidden');
+    const p = document.getElementById('emojiPicker');
+    if (p) {
+        p.classList.toggle('hidden');
+    }
 }

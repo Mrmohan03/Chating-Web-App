@@ -38,4 +38,23 @@ export function connectSocket() {
             }
         }
     });
+    // Listen for other users updating their profiles live!
+    state.socket.on('user:updated', (userData) => {
+        const contact = state.contacts.find(c => String(c.id) === String(userData.id));
+        if (contact) {
+            // Update the local data
+            contact.name = userData.name;
+            contact.avatar_url = userData.avatar_url;
+            contact.bio = userData.bio;
+            
+            // Redraw the Sidebar
+            renderChatList();
+            
+            // If we are actively chatting with them right now, update the Header!
+            if (state.activeContact && String(state.activeContact.id) === String(userData.id)) {
+                document.getElementById('chatName').textContent = userData.name;
+                document.getElementById('chatAvatar').innerHTML = makeAvatar(userData, 40);
+            }
+        }
+    });
 }
