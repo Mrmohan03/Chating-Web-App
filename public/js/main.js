@@ -1,9 +1,10 @@
 import { state } from './state.js';
-import { buildEmojiPicker, toggleEmoji } from './ui.js';
+import { buildEmojiPicker, toggleEmoji, togglePasswordVisibility } from './ui.js';
 import { showApp, showAuth, toggleAuth, doLogin, doRegister, doLogout } from './auth.js';
 import { renderChatList, openAddContactModal, closeModal } from './contacts.js';
 import { sendMessage, handleFileUpload, initDragAndDrop } from './chat.js';
 import { openProfileModal, closeProfileModal, saveProfile, openGroupModal, closeGroupModal, submitCreateGroup, uploadAvatar } from './profile.js';
+
 /* ─── INITIALIZE APP ─── */
 document.addEventListener('DOMContentLoaded', () => {
     buildEmojiPicker();
@@ -44,4 +45,4 @@ window.openGroupModal = openGroupModal;
 window.closeGroupModal = closeGroupModal;
 window.submitCreateGroup = submitCreateGroup;
 window.uploadAvatar = uploadAvatar;
-
+window.togglePasswordVisibility = togglePasswordVisibility;

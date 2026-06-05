@@ -210,3 +210,26 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
 }
 .drag-overlay h2 { color: var(--text-primary); margin-top: 16px; font-weight: 500; }
 .drag-overlay.active { opacity: 1; pointer-events: all; }
+/* ── Password Eye Toggle ── */
+.toggle-password-btn {
+    position: absolute;
+    right: 12px;
+    top: 18px; /* Centers it perfectly */
+    color: var(--text-secondary);
+    transition: var(--t);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 50%;
+}
+.toggle-password-btn:hover {
+    color: var(--accent);
+    background: rgba(255,255,255,0.05);
+}
+
+/* Prevents text from hiding behind the eye icon */
+.input-group input[type="password"],
+.input-group input.password-visible {
+    padding-right: 45px; 
+}
